@@ -38,7 +38,8 @@ func main() {
 	if *flagHostname == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
-			log.Fatal("Cannot get hostname, unable to submit data without it: " + err.Error())
+			log.Print("ERROR geting hostname: " + err.Error())
+			return
 		}
 		data.Hostname = hostname
 	} else {
@@ -72,7 +73,7 @@ func discoverOs() string {
 func osFromRelease() string {
 	out, err := exec.Command("grep", "-E", "^NAME", "/etc/os-release").Output()
 	if err != nil {
-		log.Println("error: " + err.Error())
+		log.Print("ERROR getting OS name: " + err.Error())
 		return ""
 	}
 
@@ -88,7 +89,8 @@ func analyzeProcs() []string {
 
 	procfiles, err := ioutil.ReadDir("/proc")
 	if err != nil {
-		panic(err)
+		log.Print("ERROR reading /proc: " + err.Error())
+		return libs
 	}
 
 	// analyze each process (don't count the same exe > once)
@@ -134,23 +136,29 @@ func getProcLibs(pid string) (string, []string) {
 func uploadData(data hostData) {
 	out, oerr := json.Marshal(data)
 	if oerr != nil {
-		log.Fatal(oerr.Error())
+		log.Print("ERROR serializing host data: " + oerr.Error())
+		return
 	}
 
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
 	_, err := zw.Write(out)
 	if err != nil {
-		log.Print(err)
+		log.Print("ERROR compressing data: " + err.Error())
+		return
 	}
 
 	if err := zw.Close(); err != nil {
-		log.Fatal(err)
+		log.Print("ERROR closing gzip writer: " + err.Error())
+		return
 	}
+
+	log.Printf("Sending  hostname=%s, os=%s, libcount=%d", data.Hostname, data.Os, len(data.Libs))
 
 	req, err := http.NewRequest("POST", *flagUploadURL, &buf)
 	if err != nil {
-		log.Fatal("Unable to upload data: " + err.Error())
+		log.Print("ERROR creating http request: " + err.Error())
+		return
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Content-Encoding", "gzip")
@@ -158,13 +166,18 @@ func uploadData(data hostData) {
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, rerr := client.Do(req)
 	if rerr != nil {
-		log.Fatal(err.Error())
+		log.Print("ERROR uploading data: " + rerr.Error())
+		return
+	}
+
+	if resp.StatusCode != 200 {
+		log.Printf("ERROR http response status code != 200: %d", resp.StatusCode)
 	}
 
 	// Consume POST response
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 	if len(body) != 0 {
-		log.Printf("%s\n", body)
+		log.Printf("server response: %s\n", body)
 	}
 }
