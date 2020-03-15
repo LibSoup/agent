@@ -10,3 +10,16 @@ That's it!  Plain and simple.  No telemetry, no unnecessary datapoints etc.
 
 See https://libsoup.com/agent for more information.
 
+
+### Installing
+```
+go get github.com/LibSoup/libsoup-agent
+```
+
+### Building
+```
+cd ~/go/src
+git clone git@github.com:LibSoup/libsoup-agent.git
+cd libsoup-agent
+go build .
+```
