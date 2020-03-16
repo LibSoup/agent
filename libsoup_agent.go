@@ -16,8 +16,10 @@ import (
 	"time"
 )
 
+var apiver = "v1"
+
 var flagHostname = flag.String("n", "", "Override the discovered hostname")
-var flagUploadURL = flag.String("a", "https://libsoup.com/api/v1/upload", "LibSoup server address")
+var flagUploadURL = flag.String("a", "https://libsoup.com", "LibSoup server address")
 var flagTransferID = flag.String("id", "", "Agent transfer ID")
 
 type hostData struct {
@@ -155,7 +157,7 @@ func uploadData(data hostData) {
 
 	log.Printf("Sending  hostname=%s, os=%s, libcount=%d", data.Hostname, data.Os, len(data.Libs))
 
-	req, err := http.NewRequest("POST", *flagUploadURL, &buf)
+	req, err := http.NewRequest("POST", *flagUploadURL+"/api/"+apiver+"/upload", &buf)
 	if err != nil {
 		log.Print("ERROR creating http request: " + err.Error())
 		return
